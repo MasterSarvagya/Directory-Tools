@@ -82,7 +82,7 @@ Scanning up to 500,000+ folders efficiently without memory overflow:
 - The duplicate list structure is redefined using three highly readable columns: **Path**, **File Name**, and **Size**.
 - The full file path is placed in Column 0, the specific file name in Column 1, and its human-readable formatted size in Column 2.
 - Interactive sorting is fully supported across all columns: clicking column headers dynamically sorts duplicate rows alphabetically (by Name or Path) or numerically (by Size).
-- Proper numeric sorting for sizes is achieved by backing the visible formatted string size items with raw byte size integers inside the custom `Qt.SortRole` property.
+- Proper numeric sorting for sizes is achieved by backing the visible formatted string size items with raw byte size integers inside a custom `SortableStandardItem` subclass that overrides `__lt__` comparison.
 - Cryptographic SHA-256 hashes are mapped behind-the-scenes inside invisible `Qt.UserRole + 1` data slots to prevent UI clutter while fully preserving the professional CSV Audit Log export.
 
 ### 4. High-Contrast Duplicate Highlight Rules

@@ -109,6 +109,28 @@ def format_size(num_bytes: int) -> str:
         num_bytes /= 1024.0
     return f"{num_bytes:.1f} PB"
 
+class SortableStandardItem(QStandardItem):
+    def __init__(self, text: str = "", sort_val: Any = None):
+        super().__init__(text)
+        self.sort_val = sort_val
+
+    def __lt__(self, other):
+        if not isinstance(other, QStandardItem):
+            return False
+        
+        my_val = self.sort_val
+        if my_val is None:
+            my_val = self.text()
+            
+        other_val = getattr(other, 'sort_val', None)
+        if other_val is None:
+            other_val = other.text()
+            
+        try:
+            return my_val < other_val
+        except TypeError:
+            return str(my_val) < str(other_val)
+
 # ---------------------------------------------------------
 # STYLES (Sleek Interface Custom Design Theme)
 # ---------------------------------------------------------
@@ -1635,12 +1657,11 @@ class MainWindow(QMainWindow):
                 sz = 0
 
             # Node Group Header
-            hdr_path = QStandardItem(f"Group #{group_idx} - Duplicates ({len(paths)} files)")
+            hdr_path = SortableStandardItem(f"Group #{group_idx} - Duplicates ({len(paths)} files)", "Group #" + str(group_idx).zfill(6))
             hdr_path.setData(None, Qt.UserRole)
             
-            hdr_name = QStandardItem(f"Hash: {hash_val[:12]}...")
-            hdr_size = QStandardItem(sz_str)
-            hdr_size.setData(sz, Qt.SortRole)
+            hdr_name = SortableStandardItem(f"Hash: {hash_val[:12]}...", hash_val)
+            hdr_size = SortableStandardItem(sz_str, sz)
             
             root.appendRow([hdr_path, hdr_name, hdr_size])
             
@@ -1648,14 +1669,13 @@ class MainWindow(QMainWindow):
             
             # List actual matches
             for p in paths:
-                p_item = QStandardItem(str(Path(p).parent))
+                p_item = SortableStandardItem(str(Path(p).parent))
                 p_item.setCheckable(True)
                 p_item.setData(p, Qt.UserRole)
                 p_item.setData(hash_val, Qt.UserRole + 1)
                 
-                name_item = QStandardItem(Path(p).name)
-                size_item = QStandardItem(sz_str)
-                size_item.setData(sz, Qt.SortRole)
+                name_item = SortableStandardItem(Path(p).name)
+                size_item = SortableStandardItem(sz_str, sz)
                 
                 if has_multiple_duplicates:
                     highlight_brush = QBrush(QColor(239, 68, 68, 35))  # soft red tint
