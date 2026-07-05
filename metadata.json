@@ -1,0 +1,6 @@
+{
+  "name": "Directory Merger & Duplicate Finder",
+  "description": "A high-performance Python desktop application for intelligent folder merging and optimized duplicate file scanning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
