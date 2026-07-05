@@ -1,0 +1,11 @@
+{
+    "window_width": 1536,
+    "window_height": 793,
+    "theme": "Dark",
+    "last_folder_a": "C:/Users/sarva/Downloads/Backup/MI Final Backup",
+    "last_folder_b": "C:/Users/sarva/Downloads/Backup/New folder11",
+    "last_destination": "C:/Users/sarva/Downloads/Backup/Finall",
+    "last_duplicate_target": "",
+    "conflict_policy": "rename_both",
+    "ignore_patterns": "*.tmp, *.log, temp_dir/"
+}
