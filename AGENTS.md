@@ -1,15 +1,13 @@
 # Architectural Guidelines for Future Coding Agents
 
-Welcome, Agent! This repository contains a production-quality PySide6 desktop tool and a high-fidelity visual simulator. Follow these details to enhance or maintain the code.
+Welcome, Agent! This repository contains a production-quality PySide6 desktop tool representing **Directory Tools**—a professional-grade suite combining robust multi-threaded directory merging with high-performance duplicate file scanning. Follow these details to enhance or maintain the code.
 
 ---
 
 ## 📂 Codebase File Map
 
-- `/desktop_app/main.py`: The complete, fully-featured Python desktop application. Contains MVC/MVVM patterns, asynchronous worker threads, and settings management.
+- `/desktop_app/main.py`: The complete, fully-featured Python desktop application. Contains robust MVVM/MVC patterns, multi-threaded worker architectures, custom themes, native integrations, and persistence managers.
 - `/desktop_app/requirements.txt`: System package requirements (`PySide6`, `send2trash`).
-- `/src/App.tsx`: High-fidelity interactive web demonstration of the application, featuring custom **Sleek Interface** colors and active **Dry Run** simulation routines.
-- `/metadata.json`: Application metadata.
 
 ---
 
@@ -66,9 +64,36 @@ Scanning up to 500,000+ folders efficiently without memory overflow:
 
 ---
 
+## 🎨 New Architectural Enhancements & Features
+
+### 1. Application Name & Native Brand Integration
+- The application is formally titled **Directory Tools** across all view components, title bars, and subtitles.
+- Features a stylized logo header label (**DT**).
+- Implements direct integration with native operating system standard icons (`QStyle.SP_DirIcon`), presenting a familiar, high-quality desktop integration out-of-the-box on Windows, Linux, and macOS.
+- Launches automatically in maximized mode (`showMaximized`) to provide maximum screen real-estate for comparing directory structures and duplicate lists.
+
+### 2. System-Adaptive Theme Engine
+- By default, the application queries the system's color palette during initialization.
+- Uses a background color lightness heuristic (`lightness < 128`) to automatically configure a **Dark Theme** or a **Light Theme** matching the user's OS preference.
+- Safely falls back to a clean, high-contrast **Light Theme** if the system palette is light or cannot be programmatically verified.
+- Maintains user choice via interactive top-right corner theme-toggle persistence.
+
+### 3. Restructured Duplicates Registry & Multi-Column Sorting
+- The duplicate list structure is redefined using three highly readable columns: **Path**, **File Name**, and **Size**.
+- The full file path is placed in Column 0, the specific file name in Column 1, and its human-readable formatted size in Column 2.
+- Interactive sorting is fully supported across all columns: clicking column headers dynamically sorts duplicate rows alphabetically (by Name or Path) or numerically (by Size).
+- Proper numeric sorting for sizes is achieved by backing the visible formatted string size items with raw byte size integers inside the custom `Qt.SortRole` property.
+- Cryptographic SHA-256 hashes are mapped behind-the-scenes inside invisible `Qt.UserRole + 1` data slots to prevent UI clutter while fully preserving the professional CSV Audit Log export.
+
+### 4. High-Contrast Duplicate Highlight Rules
+- When a duplicate group contains more than one duplicate copy (i.e., `total copies > 2`, meaning at least 3 instances are present on disk), the application highlights all files in that specific group.
+- Highlighted items are rendered with a soft, semi-transparent colored background and styled with bold display typography to draw immediate user attention to high-density waste.
+
+---
+
 ## ⚙️ Free-Tier CI/CD GitHub Action Configuration
 
-Create a file at `.github/workflows/build-binaries.yml` with the following configuration to compile Windows, Linux, and macOS standalone binary executables on every push to the `main` branch:
+A GitHub Actions workflow is pre-configured at `.github/workflows/build-binaries.yml` to compile Windows, Linux, and macOS standalone binary executables on every push to the `main` branch:
 
 ```yaml
 name: Build Desktop Executables
@@ -109,7 +134,7 @@ jobs:
 
       - name: Package Application with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --name="MergerDuplicateFinder" desktop_app/main.py
+          pyinstaller --onefile --windowed --name="DirectoryTools" desktop_app/main.py
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4

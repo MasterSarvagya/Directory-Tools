@@ -484,10 +484,22 @@ QCheckBox::indicator {
 class SettingsService:
     @staticmethod
     def load() -> Dict[str, Any]:
+        default_theme = "Light"
+        try:
+            from PySide6.QtGui import QPalette
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                bg_color = app.palette().color(QPalette.Window)
+                if bg_color.lightness() < 128:
+                    default_theme = "Dark"
+        except Exception:
+            pass
+
         default_settings = {
             "window_width": 1024,
             "window_height": 768,
-            "theme": "Dark",
+            "theme": default_theme,
             "last_folder_a": "",
             "last_folder_b": "",
             "last_destination": "",
@@ -908,8 +920,16 @@ class MainWindow(QMainWindow):
         return card, value_lbl
 
     def init_ui(self):
-        self.setWindowTitle("FileMorph Architect - Python Desktop Utility")
+        self.setWindowTitle("Directory Tools - Python Desktop Utility")
         self.resize(self.settings["window_width"], self.settings["window_height"])
+        try:
+            self.setWindowIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon))
+        except Exception:
+            try:
+                self.setWindowIcon(self.style().standardIcon(QStyle.SP_DirIcon))
+            except Exception:
+                pass
+        self.showMaximized()
 
         # Central Layout Builder
         central_widget = QWidget()
@@ -922,11 +942,11 @@ class MainWindow(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 8)
         
-        logo_lbl = QLabel("FM")
+        logo_lbl = QLabel("DT")
         logo_lbl.setStyleSheet("font-weight: 900; font-size: 18px; color: #ffffff; background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #3b82f6, stop:1 #60a5fa); padding: 4px 10px; border-radius: 6px;")
         
-        self.title_lbl = QLabel("FileMorph Architect")
-        self.desc_lbl = QLabel("Python PySide6 Desktop Engine")
+        self.title_lbl = QLabel("Directory Tools")
+        self.desc_lbl = QLabel("Folder Merger & Duplicate Finder")
         
         header_layout.addWidget(logo_lbl)
         header_layout.addWidget(self.title_lbl)
@@ -1262,9 +1282,10 @@ class MainWindow(QMainWindow):
         # Duplicate results tree
         self.dup_tree = QTreeView()
         self.dup_model = QStandardItemModel()
-        self.dup_model.setHorizontalHeaderLabels(["Target Path", "Size", "SHA-256 Content Hash"])
+        self.dup_model.setHorizontalHeaderLabels(["Path", "File Name", "Size"])
         self.dup_tree.setModel(self.dup_model)
         self.dup_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.dup_tree.setSortingEnabled(True)
         right_layout.addWidget(self.dup_tree)
 
         # Add left and right widgets with stretch factors
@@ -1596,6 +1617,7 @@ class MainWindow(QMainWindow):
         self.dup_worker.start()
 
     def populate_duplicate_tree(self, groups: dict):
+        self.dup_tree.setSortingEnabled(False)
         root = self.dup_model.invisibleRootItem()
         group_idx = 0
         
@@ -1610,25 +1632,46 @@ class MainWindow(QMainWindow):
                 reclaimable_bytes += sz * (len(paths) - 1)
             except Exception:
                 sz_str = "Unknown"
+                sz = 0
 
             # Node Group Header
             hdr_path = QStandardItem(f"Group #{group_idx} - Duplicates ({len(paths)} files)")
             hdr_path.setData(None, Qt.UserRole)
-            hdr_size = QStandardItem(sz_str)
-            hdr_hash = QStandardItem(hash_val[:16] + "...")
             
-            root.appendRow([hdr_path, hdr_size, hdr_hash])
+            hdr_name = QStandardItem(f"Hash: {hash_val[:12]}...")
+            hdr_size = QStandardItem(sz_str)
+            hdr_size.setData(sz, Qt.SortRole)
+            
+            root.appendRow([hdr_path, hdr_name, hdr_size])
+            
+            has_multiple_duplicates = len(paths) > 2
             
             # List actual matches
             for p in paths:
-                p_item = QStandardItem(p)
+                p_item = QStandardItem(str(Path(p).parent))
                 p_item.setCheckable(True)
                 p_item.setData(p, Qt.UserRole)
+                p_item.setData(hash_val, Qt.UserRole + 1)
                 
+                name_item = QStandardItem(Path(p).name)
                 size_item = QStandardItem(sz_str)
-                hash_item = QStandardItem(hash_val)
-                hdr_path.appendRow([p_item, size_item, hash_item])
+                size_item.setData(sz, Qt.SortRole)
+                
+                if has_multiple_duplicates:
+                    highlight_brush = QBrush(QColor(239, 68, 68, 35))  # soft red tint
+                    p_item.setBackground(highlight_brush)
+                    name_item.setBackground(highlight_brush)
+                    size_item.setBackground(highlight_brush)
+                    
+                    font = name_item.font()
+                    font.setBold(True)
+                    p_item.setFont(font)
+                    name_item.setFont(font)
+                    size_item.setFont(font)
+                
+                hdr_path.appendRow([p_item, name_item, size_item])
 
+        self.dup_tree.setSortingEnabled(True)
         self.dup_tree.expandAll()
         
         reclaim_str = format_size(reclaimable_bytes)
@@ -1725,10 +1768,9 @@ class MainWindow(QMainWindow):
                     if hdr_item:
                         for j in range(hdr_item.rowCount()):
                             sub_item = hdr_item.child(j, 0)
-                            hash_item = hdr_item.child(j, 2)
                             if sub_item:
                                 fp = sub_item.data(Qt.UserRole)
-                                h = hash_item.text() if hash_item else ""
+                                h = sub_item.data(Qt.UserRole + 1) or ""
                                 if fp:
                                     f.write(f"{i+1},\"{fp}\",{h}\n")
             QMessageBox.information(self, "Export Succeeded", f"Report successfully archived to:\n{path}")
