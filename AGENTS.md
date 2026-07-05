@@ -78,16 +78,23 @@ Scanning up to 500,000+ folders efficiently without memory overflow:
 - Safely falls back to a clean, high-contrast **Light Theme** if the system palette is light or cannot be programmatically verified.
 - Maintains user choice via interactive top-right corner theme-toggle persistence.
 
-### 3. Restructured Duplicates Registry & Multi-Column Sorting
-- The duplicate list structure is redefined using three highly readable columns: **Path**, **File Name**, and **Size**.
-- The full file path is placed in Column 0, the specific file name in Column 1, and its human-readable formatted size in Column 2.
-- Interactive sorting is fully supported across all columns: clicking column headers dynamically sorts duplicate rows alphabetically (by Name or Path) or numerically (by Size).
-- Proper numeric sorting for sizes is achieved by backing the visible formatted string size items with raw byte size integers inside a custom `SortableStandardItem` subclass that overrides `__lt__` comparison.
+### 3. Flat Restructured Duplicates Registry & Multi-Column Sorting
+- The duplicate list is presented as a fully flat structure using four highly readable columns: **Group**, **Path**, **File Name**, and **Size**.
+- Columns are organized as:
+  - Column 0 (**Group**): Displays the specific duplicate group index (e.g., `Group #1`), backed by the group integer for accurate numeric sorting.
+  - Column 1 (**Path**): Displays the directory containing the file, allowing full interactive sorting alphabetically.
+  - Column 2 (**File Name**): Displays the specific file name, fully sortable.
+  - Column 3 (**Size**): Displays the formatted human-readable size, backed by raw byte sizes inside a custom `SortableStandardItem` subclass that overrides `__lt__` comparison for accurate numeric sorting.
 - Cryptographic SHA-256 hashes are mapped behind-the-scenes inside invisible `Qt.UserRole + 1` data slots to prevent UI clutter while fully preserving the professional CSV Audit Log export.
 
 ### 4. High-Contrast Duplicate Highlight Rules
 - When a duplicate group contains more than one duplicate copy (i.e., `total copies > 2`, meaning at least 3 instances are present on disk), the application highlights all files in that specific group.
-- Highlighted items are rendered with a soft, semi-transparent colored background and styled with bold display typography to draw immediate user attention to high-density waste.
+- Highlighted items are rendered with a soft, semi-transparent colored background and styled with bold display typography across all columns to draw immediate user attention to high-density waste.
+
+### 5. Smart Path-Sorted Duplicate Selection Utility
+- When clicked, the **Select Duplicates** tool dynamically groups all flat registry rows by their duplicate content signatures (hashes).
+- For each group, it sorts the matching items lexicographically by their full file path.
+- It automatically leaves the first file (earliest path alphabetical original copy) unchecked and safe, while checking/selecting all other duplicate copies for deletion/recycling.
 
 ---
 

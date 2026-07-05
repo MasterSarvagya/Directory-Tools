@@ -1304,9 +1304,12 @@ class MainWindow(QMainWindow):
         # Duplicate results tree
         self.dup_tree = QTreeView()
         self.dup_model = QStandardItemModel()
-        self.dup_model.setHorizontalHeaderLabels(["Path", "File Name", "Size"])
+        self.dup_model.setHorizontalHeaderLabels(["Group", "Path", "File Name", "Size"])
         self.dup_tree.setModel(self.dup_model)
-        self.dup_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.dup_tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.dup_tree.header().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.dup_tree.header().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.dup_tree.header().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.dup_tree.setSortingEnabled(True)
         right_layout.addWidget(self.dup_tree)
 
@@ -1656,43 +1659,35 @@ class MainWindow(QMainWindow):
                 sz_str = "Unknown"
                 sz = 0
 
-            # Node Group Header
-            hdr_path = SortableStandardItem(f"Group #{group_idx} - Duplicates ({len(paths)} files)", "Group #" + str(group_idx).zfill(6))
-            hdr_path.setData(None, Qt.UserRole)
-            
-            hdr_name = SortableStandardItem(f"Hash: {hash_val[:12]}...", hash_val)
-            hdr_size = SortableStandardItem(sz_str, sz)
-            
-            root.appendRow([hdr_path, hdr_name, hdr_size])
-            
             has_multiple_duplicates = len(paths) > 2
             
-            # List actual matches
             for p in paths:
-                p_item = SortableStandardItem(str(Path(p).parent))
-                p_item.setCheckable(True)
-                p_item.setData(p, Qt.UserRole)
-                p_item.setData(hash_val, Qt.UserRole + 1)
+                group_item = SortableStandardItem(f"Group #{group_idx}", group_idx)
+                group_item.setCheckable(True)
+                group_item.setData(p, Qt.UserRole)
+                group_item.setData(hash_val, Qt.UserRole + 1)
                 
+                path_item = SortableStandardItem(str(Path(p).parent))
                 name_item = SortableStandardItem(Path(p).name)
                 size_item = SortableStandardItem(sz_str, sz)
                 
                 if has_multiple_duplicates:
                     highlight_brush = QBrush(QColor(239, 68, 68, 35))  # soft red tint
-                    p_item.setBackground(highlight_brush)
+                    group_item.setBackground(highlight_brush)
+                    path_item.setBackground(highlight_brush)
                     name_item.setBackground(highlight_brush)
                     size_item.setBackground(highlight_brush)
                     
                     font = name_item.font()
                     font.setBold(True)
-                    p_item.setFont(font)
+                    group_item.setFont(font)
+                    path_item.setFont(font)
                     name_item.setFont(font)
                     size_item.setFont(font)
                 
-                hdr_path.appendRow([p_item, name_item, size_item])
+                root.appendRow([group_item, path_item, name_item, size_item])
 
         self.dup_tree.setSortingEnabled(True)
-        self.dup_tree.expandAll()
         
         reclaim_str = format_size(reclaimable_bytes)
             
@@ -1718,16 +1713,32 @@ class MainWindow(QMainWindow):
     # ADDITIONAL UX EXTRAS
     # ---------------------------------------------------------
     def select_all_except_first(self):
-        """Auto-checks duplicate copies while keeping the original safe from selection."""
-        root = self.dup_model.invisibleRootItem()
-        for i in range(root.rowCount()):
-            hdr_item = root.child(i, 0)
-            if hdr_item:
-                for j in range(hdr_item.rowCount()):
-                    sub_item = hdr_item.child(j, 0)
-                    if sub_item:
-                        # Check all entries in the cluster EXCEPT the very first one
-                        sub_item.setCheck(Qt.Checked if j > 0 else Qt.Unchecked)
+        """Auto-checks duplicate copies while keeping the original safe from selection.
+        Groups are processed such that within each duplicate set (matching hash),
+        the copies are sorted alphabetically by their full file path, leaving the
+        first one safe (unchecked) and checking all others."""
+        self.dup_tree.setSortingEnabled(False)
+        try:
+            root = self.dup_model.invisibleRootItem()
+            hash_to_items = {}
+            for i in range(root.rowCount()):
+                group_item = root.child(i, 0)
+                if group_item:
+                    filepath = group_item.data(Qt.UserRole)
+                    hash_val = group_item.data(Qt.UserRole + 1)
+                    if filepath and hash_val:
+                        if hash_val not in hash_to_items:
+                            hash_to_items[hash_val] = []
+                        hash_to_items[hash_val].append((filepath, group_item))
+            
+            for hash_val, items_list in hash_to_items.items():
+                sorted_items = sorted(items_list, key=lambda x: x[0])
+                if sorted_items:
+                    sorted_items[0][1].setCheckState(Qt.Unchecked)
+                    for filepath, group_item in sorted_items[1:]:
+                        group_item.setCheckState(Qt.Checked)
+        finally:
+            self.dup_tree.setSortingEnabled(True)
 
     def trash_selected_files(self):
         """Safely discards verified files using cross-platform recycle bins."""
@@ -1735,14 +1746,11 @@ class MainWindow(QMainWindow):
         to_remove = []
         
         for i in range(root.rowCount()):
-            hdr_item = root.child(i, 0)
-            if hdr_item:
-                for j in range(hdr_item.rowCount()):
-                    sub_item = hdr_item.child(j, 0)
-                    if sub_item and sub_item.checkState() == Qt.Checked:
-                        filepath = sub_item.data(Qt.UserRole)
-                        if filepath:
-                            to_remove.append((filepath, hdr_item, j))
+            group_item = root.child(i, 0)
+            if group_item and group_item.checkState() == Qt.Checked:
+                filepath = group_item.data(Qt.UserRole)
+                if filepath:
+                    to_remove.append(filepath)
 
         if not to_remove:
             QMessageBox.information(self, "Empty Selection", "Please check/select duplicates to delete.")
@@ -1757,7 +1765,7 @@ class MainWindow(QMainWindow):
             return
 
         success_count = 0
-        for fp, parent_hdr, row in to_remove:
+        for fp in to_remove:
             try:
                 if HAS_SEND2TRASH:
                     send2trash(fp)
@@ -1784,15 +1792,13 @@ class MainWindow(QMainWindow):
                 f.write("GroupIndex,Filepath,ContentSHA256\n")
                 root = self.dup_model.invisibleRootItem()
                 for i in range(root.rowCount()):
-                    hdr_item = root.child(i, 0)
-                    if hdr_item:
-                        for j in range(hdr_item.rowCount()):
-                            sub_item = hdr_item.child(j, 0)
-                            if sub_item:
-                                fp = sub_item.data(Qt.UserRole)
-                                h = sub_item.data(Qt.UserRole + 1) or ""
-                                if fp:
-                                    f.write(f"{i+1},\"{fp}\",{h}\n")
+                    group_item = root.child(i, 0)
+                    if group_item:
+                        fp = group_item.data(Qt.UserRole)
+                        h = group_item.data(Qt.UserRole + 1) or ""
+                        grp = group_item.text()
+                        if fp:
+                            f.write(f"\"{grp}\",\"{fp}\",{h}\n")
             QMessageBox.information(self, "Export Succeeded", f"Report successfully archived to:\n{path}")
         except Exception as e:
             QMessageBox.critical(self, "Export Exception", f"Unable to generate CSV log: {e}")
