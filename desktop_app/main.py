@@ -628,6 +628,8 @@ class MergeWorker(QThread):
                 state = "identical"
                 size = 0
                 
+                sz_a = 0
+                sz_b = 0
                 if in_a and in_b:
                     # Metadata-only comparison for ultra-fast merge overlay creation
                     try:
@@ -648,16 +650,20 @@ class MergeWorker(QThread):
                         size = max(sz_a, 0)
                 elif in_a:
                     state = "folderA_only"
-                    size = files_a[rel_path].stat().st_size
+                    sz_a = files_a[rel_path].stat().st_size
+                    size = sz_a
                 else:
                     state = "folderB_only"
-                    size = files_b[rel_path].stat().st_size
+                    sz_b = files_b[rel_path].stat().st_size
+                    size = sz_b
 
                 preview_tree[str(rel_path)] = {
                     "state": state,
                     "in_a": in_a,
                     "in_b": in_b,
-                    "size": size
+                    "size": size,
+                    "sz_a": sz_a,
+                    "sz_b": sz_b
                 }
 
             self.preview_ready.emit(preview_tree)
@@ -1354,9 +1360,25 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------
     def trigger_start(self):
         if self.active_tab_index == 0:
-            self.start_merge(dry_run=False)
+            reply = QMessageBox.question(
+                self,
+                "Confirm Folder Merge",
+                "Are you sure you want to run the Folder Merge execution?\n\nThis will apply changes directly to your disk under the Destination folder.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.start_merge(dry_run=False)
         else:
-            self.start_duplicate_scan()
+            reply = QMessageBox.question(
+                self,
+                "Confirm Duplicate Scan",
+                "Are you sure you want to run the Duplicate Scan?\n\nThis will scan the target folder recursively for duplicate files.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            if reply == QMessageBox.Yes:
+                self.start_duplicate_scan()
 
     def trigger_test_run(self):
         if self.active_tab_index == 0:
@@ -1405,7 +1427,23 @@ class MainWindow(QMainWindow):
         
         total_files = len(tree_data)
         conflicts = sum(1 for info in tree_data.values() if info["state"] == "conflict")
-        total_bytes = sum(info["size"] for info in tree_data.values())
+        total_bytes = 0
+        policy = self.policy_box.currentData()
+        for info in tree_data.values():
+            state = info["state"]
+            sz_a = info.get("sz_a", info["size"])
+            sz_b = info.get("sz_b", 0)
+            if state == "identical":
+                total_bytes += sz_a
+            elif state == "folderA_only":
+                total_bytes += sz_a
+            elif state == "folderB_only":
+                total_bytes += sz_b
+            elif state == "conflict":
+                if policy == "rename_both":
+                    total_bytes += sz_a + sz_b
+                else:
+                    total_bytes += sz_a
         
         size_str = format_size(total_bytes)
             
