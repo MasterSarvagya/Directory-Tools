@@ -97,12 +97,24 @@ def should_ignore(path: Path, base_dir: Path, ignore_patterns: str) -> bool:
                 return True
     return False
 
+def format_size(num_bytes: int) -> str:
+    """Formats raw bytes into a human-readable string with dynamic unit resolution."""
+    if num_bytes < 0:
+        return "0 Bytes"
+    for unit in ['Bytes', 'KB', 'MB', 'GB', 'TB']:
+        if num_bytes < 1024.0:
+            if unit == 'Bytes':
+                return f"{int(num_bytes)} Bytes"
+            return f"{num_bytes:.1f} {unit}"
+        num_bytes /= 1024.0
+    return f"{num_bytes:.1f} PB"
+
 # ---------------------------------------------------------
 # STYLES (Sleek Interface Custom Design Theme)
 # ---------------------------------------------------------
 SLEEK_DARK_STYLE = """
 QMainWindow {
-    background-color: #0f172a;
+    background-color: #000000;
 }
 QWidget {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
@@ -113,12 +125,12 @@ QFrame {
     border: none;
 }
 QFrame#kpi_card {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: #0a0a0a;
+    border: 1px solid #27272a;
     border-radius: 8px;
 }
 QLabel#kpi_title {
-    color: #94a3b8;
+    color: #a1a1aa;
     font-size: 10px;
     font-weight: bold;
 }
@@ -133,13 +145,13 @@ QLabel#section_header {
     color: #38bdf8;
 }
 QTabWidget::pane {
-    border: 1px solid #1e293b;
-    background-color: #0f172a;
+    border: 1px solid #1f2937;
+    background-color: #000000;
     border-radius: 8px;
 }
 QTabBar::tab {
-    background-color: #1e293b;
-    color: #94a3b8;
+    background-color: #121214;
+    color: #a1a1aa;
     padding: 10px 20px;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
@@ -151,12 +163,12 @@ QTabBar::tab:selected {
     color: #ffffff;
 }
 QTabBar::tab:hover:!selected {
-    background-color: #334155;
-    color: #e2e8f0;
+    background-color: #27272a;
+    color: #e4e4e7;
 }
 QLineEdit {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: #0a0a0a;
+    border: 1px solid #27272a;
     border-radius: 6px;
     padding: 6px 12px;
     color: #f8fafc;
@@ -179,29 +191,29 @@ QPushButton:pressed {
     background-color: #1d4ed8;
 }
 QPushButton:disabled {
-    background-color: #1e293b;
-    color: #64748b;
+    background-color: #18181b;
+    color: #71717a;
 }
 QPushButton#btn_secondary {
-    background-color: #1e293b;
-    color: #e2e8f0;
-    border: 1px solid #334155;
+    background-color: #121214;
+    color: #e4e4e7;
+    border: 1px solid #27272a;
 }
 QPushButton#btn_secondary:hover {
-    background-color: #334155;
+    background-color: #27272a;
 }
 QTreeView {
-    background-color: #111827;
-    border: 1px solid #1e293b;
+    background-color: #050505;
+    border: 1px solid #1f2937;
     border-radius: 8px;
-    gridline-color: #1e293b;
-    color: #e2e8f0;
+    gridline-color: #1f2937;
+    color: #e4e4e7;
 }
 QHeaderView::section {
-    background-color: #1e293b;
-    color: #cbd5e1;
+    background-color: #121214;
+    color: #d4d4d8;
     padding: 6px;
-    border: 1px solid #111827;
+    border: 1px solid #050505;
     font-weight: bold;
 }
 QTreeView::item {
@@ -215,27 +227,60 @@ QTreeView::item:selected {
     color: #3b82f6;
 }
 QProgressBar {
-    border: 1px solid #1e293b;
-    border-radius: 4px;
+    border: 1px solid #1f2937;
+    border-radius: 6px;
     text-align: center;
-    background-color: #1e293b;
+    background-color: #050505;
     color: #ffffff;
     font-weight: bold;
 }
 QProgressBar::chunk {
     background-color: #3b82f6;
-    border-radius: 3px;
+    border-radius: 5px;
 }
 QComboBox {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: #0a0a0a;
+    border: 1px solid #27272a;
     border-radius: 6px;
-    padding: 5px;
-    color: #f8fafc;
+    padding: 6px 30px 6px 12px;
+    color: #f4f4f5;
+    min-height: 20px;
+}
+QComboBox:hover {
+    border-color: #3b82f6;
+}
+QComboBox:focus {
+    border-color: #3b82f6;
+}
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left: 1px solid #27272a;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+QComboBox::down-arrow {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #3b82f6;
+    margin-top: 1px;
+}
+QComboBox QAbstractItemView {
+    background-color: #0a0a0a;
+    border: 1px solid #27272a;
+    selection-background-color: #3b82f6;
+    selection-color: #ffffff;
+    color: #f4f4f5;
+    outline: none;
+    border-radius: 6px;
+    padding: 4px;
 }
 QTextEdit {
-    background-color: #0b0f19;
-    border: 1px solid #1e293b;
+    background-color: #050505;
+    border: 1px solid #1f2937;
     border-radius: 8px;
     font-family: 'Consolas', 'JetBrains Mono', monospace;
     font-size: 11px;
@@ -366,7 +411,7 @@ QTreeView::item:selected {
 }
 QProgressBar {
     border: 1px solid #cbd5e1;
-    border-radius: 4px;
+    border-radius: 6px;
     text-align: center;
     background-color: #e2e8f0;
     color: #0f172a;
@@ -374,14 +419,47 @@ QProgressBar {
 }
 QProgressBar::chunk {
     background-color: #3b82f6;
-    border-radius: 3px;
+    border-radius: 5px;
 }
 QComboBox {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    padding: 5px;
+    padding: 6px 30px 6px 12px;
     color: #0f172a;
+    min-height: 20px;
+}
+QComboBox:hover {
+    border-color: #2563eb;
+}
+QComboBox:focus {
+    border-color: #2563eb;
+}
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left: 1px solid #cbd5e1;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+QComboBox::down-arrow {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #2563eb;
+    margin-top: 1px;
+}
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    selection-background-color: #2563eb;
+    selection-color: #ffffff;
+    color: #0f172a;
+    outline: none;
+    border-radius: 6px;
+    padding: 4px;
 }
 QTextEdit {
     background-color: #f8fafc;
@@ -797,6 +875,8 @@ class MainWindow(QMainWindow):
         self.merge_worker: Optional[MergeWorker] = None
         self.dup_worker: Optional[DuplicateWorker] = None
         self.active_tab_index = 0
+        self.test_run_done = False
+        self.is_currently_test_run = False
         
         self.init_ui()
 
@@ -831,7 +911,7 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(16, 16, 16, 16)
 
-        # Header bar
+        # 1. Header bar (First row, completely separate)
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 8)
@@ -847,23 +927,31 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(self.desc_lbl)
         header_layout.addStretch()
         
+        main_layout.addWidget(header_frame)
+
+        # 2. Create Tab Engine (Tab row on left and theme buttons on right)
+        self.tabs = QTabWidget()
+        self.tabs.currentChanged.connect(self.tab_changed)
+        
+        # Corner widget for self.tabs containing theme/utility triggers
+        corner_widget = QWidget()
+        corner_layout = QHBoxLayout(corner_widget)
+        corner_layout.setContentsMargins(0, 0, 0, 4)
+        corner_layout.setSpacing(6)
+        
         # Theme toggle button
         self.btn_theme = QPushButton(f"Theme: {self.settings.get('theme', 'Dark')}")
         self.btn_theme.setObjectName("btn_secondary")
         self.btn_theme.clicked.connect(self.toggle_theme)
-        header_layout.addWidget(self.btn_theme)
+        corner_layout.addWidget(self.btn_theme)
         
-        # Quick view log button
+        # Clear logs button
         self.btn_logs = QPushButton("Clear log")
         self.btn_logs.setObjectName("btn_secondary")
         self.btn_logs.clicked.connect(self.clear_logs)
-        header_layout.addWidget(self.btn_logs)
+        corner_layout.addWidget(self.btn_logs)
         
-        main_layout.addWidget(header_frame)
-
-        # Create Tab Engine
-        self.tabs = QTabWidget()
-        self.tabs.currentChanged.connect(self.tab_changed)
+        self.tabs.setCornerWidget(corner_widget, Qt.TopRightCorner)
         
         # Add tab 1 & 2
         self.tab_merge = QWidget()
@@ -876,32 +964,45 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.tab_dup, "Duplicate File Finder")
         main_layout.addWidget(self.tabs)
 
-        # Footer Actions Panel
+        # 3. Footer Actions Panel (Optimized compact height for all bottom bar elements)
         footer_frame = QFrame()
         footer_layout = QHBoxLayout(footer_frame)
         footer_layout.setContentsMargins(0, 12, 0, 0)
+        footer_layout.setSpacing(10)
         
-        # Progress and status info
+        target_height = 34
+        
         self.progress_lbl = QLabel("Status: Idle")
+        self.progress_lbl.setFixedHeight(target_height)
+        self.progress_lbl.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self.progress_lbl.setMinimumWidth(180)
+        
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
-        self.progress_bar.setFixedHeight(12)
+        self.progress_bar.setFixedHeight(target_height)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setAlignment(Qt.AlignCenter)
         
-        progress_box = QVBoxLayout()
-        progress_box.addWidget(self.progress_lbl)
-        progress_box.addWidget(self.progress_bar)
-        footer_layout.addLayout(progress_box, 4)
-
-        # Shared triggers
-        self.btn_start = QPushButton("Start Operation")
-        self.btn_start.clicked.connect(self.trigger_start)
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setObjectName("btn_secondary")
         self.btn_cancel.setEnabled(False)
+        self.btn_cancel.setFixedHeight(target_height)
         self.btn_cancel.clicked.connect(self.trigger_cancel)
         
+        self.btn_test_run = QPushButton("Test Run (Dry Run)")
+        self.btn_test_run.setObjectName("btn_secondary")
+        self.btn_test_run.setFixedHeight(target_height)
+        self.btn_test_run.clicked.connect(self.trigger_test_run)
+        
+        self.btn_start = QPushButton("Start Operation")
+        self.btn_start.setFixedHeight(target_height)
+        self.btn_start.clicked.connect(self.trigger_start)
+        
+        footer_layout.addWidget(self.progress_lbl, 2)
+        footer_layout.addWidget(self.progress_bar, 4)
         footer_layout.addWidget(self.btn_cancel, 1)
-        footer_layout.addWidget(self.btn_start, 1)
+        footer_layout.addWidget(self.btn_test_run, 2)
+        footer_layout.addWidget(self.btn_start, 2)
         
         main_layout.addWidget(footer_frame)
 
@@ -932,10 +1033,12 @@ class MainWindow(QMainWindow):
         card_total, self.lbl_merge_kpi_total = self.create_kpi_card("TOTAL FILES", "0")
         card_conflicts, self.lbl_merge_kpi_conflicts = self.create_kpi_card("CONFLICTS", "0")
         card_size, self.lbl_merge_kpi_size = self.create_kpi_card("DATA SIZE", "0 MB")
+        card_skipped, self.lbl_merge_kpi_skipped = self.create_kpi_card("SKIPPED", "0")
         
         kpi_layout.addWidget(card_total)
         kpi_layout.addWidget(card_conflicts)
         kpi_layout.addWidget(card_size)
+        kpi_layout.addWidget(card_skipped)
         left_layout.addLayout(kpi_layout)
 
         # 2. Browse Fields Frame
@@ -994,7 +1097,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(ignore_lbl)
         left_layout.addWidget(self.edit_ignore)
 
-        # 4. Conflict Policy & DRY RUN control bar
+        # 4. Conflict Policy control bar
         controls_bar = QHBoxLayout()
         
         policy_lbl = QLabel("Conflict Policy:")
@@ -1002,16 +1105,18 @@ class MainWindow(QMainWindow):
         self.policy_box.addItem("Keep Both (Automatic Renaming)", "rename_both")
         self.policy_box.addItem("Overwrite Target (A dominates)", "overwrite")
         
-        self.chk_dry_run = QCheckBox("Dry Run Mode (Simulate without changing disk)")
-        self.chk_dry_run.setChecked(True)
-        self.chk_dry_run.setStyleSheet("font-weight: bold;")
-        
         controls_bar.addWidget(policy_lbl)
         controls_bar.addWidget(self.policy_box)
-        controls_bar.addSpacing(10)
-        controls_bar.addWidget(self.chk_dry_run)
+        controls_bar.addStretch()
         
         left_layout.addLayout(controls_bar)
+
+        # Connect input modifications to dynamically update the Test Run / Start button state
+        self.edit_folder_a.textChanged.connect(self.on_merge_input_changed)
+        self.edit_folder_b.textChanged.connect(self.on_merge_input_changed)
+        self.edit_dest.textChanged.connect(self.on_merge_input_changed)
+        self.edit_ignore.textChanged.connect(self.on_merge_input_changed)
+        self.policy_box.currentIndexChanged.connect(self.on_merge_input_changed)
 
         # 5. Local Tab Logs below inputs
         console_lbl = QLabel("DIRECTORY MERGE CONSOLE LOGS")
@@ -1172,12 +1277,21 @@ class MainWindow(QMainWindow):
 
     def tab_changed(self, index: int):
         self.active_tab_index = index
-        # Update Start Button text safely if it has been initialized
         if hasattr(self, 'btn_start'):
             if index == 0:
                 self.btn_start.setText("Run Folder Merge")
+                self.btn_test_run.setVisible(True)
+                self.btn_start.setEnabled(getattr(self, 'test_run_done', False))
             else:
                 self.btn_start.setText("Run Duplicate Scan")
+                self.btn_test_run.setVisible(False)
+                self.btn_start.setEnabled(True)
+
+    def on_merge_input_changed(self):
+        self.test_run_done = False
+        if hasattr(self, 'btn_start') and self.active_tab_index == 0:
+            self.btn_start.setEnabled(False)
+            self.append_log("[SYSTEM] Parameters changed. Perform a Test Run to enable merge execution.")
 
     @Slot(str)
     def append_log(self, text: str):
@@ -1229,22 +1343,24 @@ class MainWindow(QMainWindow):
             self.title_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #0f172a;")
             self.desc_lbl.setStyleSheet("font-size: 11px; color: #475569; font-weight: normal;")
             self.progress_lbl.setStyleSheet("color: #475569;")
-            self.chk_dry_run.setStyleSheet("font-weight: bold; color: #0f172a;")
         else:
             self.setStyleSheet(SLEEK_DARK_STYLE)
             self.title_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
             self.desc_lbl.setStyleSheet("font-size: 11px; color: #94a3b8; font-weight: normal;")
             self.progress_lbl.setStyleSheet("color: #94a3b8;")
-            self.chk_dry_run.setStyleSheet("font-weight: bold; color: #e2e8f0;")
 
     # ---------------------------------------------------------
     # OPERATIONAL PIPELINES
     # ---------------------------------------------------------
     def trigger_start(self):
         if self.active_tab_index == 0:
-            self.start_merge()
+            self.start_merge(dry_run=False)
         else:
             self.start_duplicate_scan()
+
+    def trigger_test_run(self):
+        if self.active_tab_index == 0:
+            self.start_merge(dry_run=True)
 
     def trigger_cancel(self):
         if self.merge_worker and self.merge_worker.isRunning():
@@ -1254,7 +1370,7 @@ class MainWindow(QMainWindow):
         self.btn_cancel.setEnabled(False)
 
     # Tab 1 execution
-    def start_merge(self):
+    def start_merge(self, dry_run=False):
         folder_a = self.edit_folder_a.text().strip()
         folder_b = self.edit_folder_b.text().strip()
         dest = self.edit_dest.text().strip()
@@ -1264,7 +1380,7 @@ class MainWindow(QMainWindow):
             return
 
         policy = self.policy_box.currentData()
-        dry_run = self.chk_dry_run.isChecked()
+        self.is_currently_test_run = dry_run
         ignore_patterns = self.edit_ignore.text().strip()
 
         self.btn_start.setEnabled(False)
@@ -1284,55 +1400,96 @@ class MainWindow(QMainWindow):
         self.merge_worker.start()
 
     def populate_merge_tree(self, tree_data: dict):
-        """Build a tree-view matching states."""
+        """Build a collapsible hierarchical tree-view matching states."""
         root_item = self.tree_model.invisibleRootItem()
         
         total_files = len(tree_data)
         conflicts = sum(1 for info in tree_data.values() if info["state"] == "conflict")
         total_bytes = sum(info["size"] for info in tree_data.values())
         
-        # Format size elegantly
-        if total_bytes < 1048576:
-            size_str = f"{round(total_bytes / 1024, 1)} KB"
-        else:
-            size_str = f"{round(total_bytes / 1048576, 1)} MB"
+        size_str = format_size(total_bytes)
             
         self.lbl_merge_kpi_total.setText(str(total_files))
         self.lbl_merge_kpi_conflicts.setText(str(conflicts))
         self.lbl_merge_kpi_size.setText(size_str)
         
+        folder_cache = {}
+
         for rel_path_str, info in sorted(tree_data.items()):
             state = info["state"]
-            size_mb = round(info["size"] / (1024 * 1024), 2)
+            file_size_str = format_size(info["size"])
             
-            item_path = QStandardItem(rel_path_str)
+            # Split the path into segments
+            parts = [p for p in rel_path_str.replace('\\', '/').split('/') if p]
+            if not parts:
+                continue
+                
+            filename = parts[-1]
+            parent_dirs = parts[:-1]
+            
+            # Traverse and construct/retrieve collapsible directory nodes
+            current_parent = root_item
+            current_path_tuple = ()
+            
+            for folder_name in parent_dirs:
+                current_path_tuple += (folder_name,)
+                if current_path_tuple in folder_cache:
+                    current_parent = folder_cache[current_path_tuple]
+                else:
+                    folder_item = QStandardItem(folder_name)
+                    font = folder_item.font()
+                    font.setBold(True)
+                    folder_item.setFont(font)
+                    folder_item.setForeground(QBrush(QColor("#3b82f6")))
+                    
+                    folder_state = QStandardItem("FOLDER")
+                    folder_state.setForeground(QBrush(QColor("#64748b")))
+                    folder_decision = QStandardItem("")
+                    
+                    current_parent.appendRow([folder_item, folder_state, folder_decision])
+                    folder_cache[current_path_tuple] = folder_item
+                    current_parent = folder_item
+            
+            # Add file level items with appropriate styling and state descriptors
+            item_path = QStandardItem(filename)
             item_state = QStandardItem(state.upper())
             item_decision = QStandardItem()
             
             # Apply colored indicators
             if state == "identical":
                 item_state.setForeground(QBrush(QColor("#64748b")))
-                item_decision.setText(f"Keep unique copy ({size_mb} MB)")
+                item_decision.setText(f"Keep unique copy ({file_size_str})")
             elif state == "conflict":
                 item_state.setForeground(QBrush(QColor("#f59e0b")))
                 item_decision.setText("Duplicated renaming requested")
             elif state == "folderA_only":
                 item_state.setForeground(QBrush(QColor("#10b981")))
-                item_decision.setText(f"Incorporate from A ({size_mb} MB)")
+                item_decision.setText(f"Incorporate from A ({file_size_str})")
             elif state == "folderB_only":
                 item_state.setForeground(QBrush(QColor("#3b82f6")))
-                item_decision.setText(f"Incorporate from B ({size_mb} MB)")
+                item_decision.setText(f"Incorporate from B ({file_size_str})")
 
-            root_item.appendRow([item_path, item_state, item_decision])
+            current_parent.appendRow([item_path, item_state, item_decision])
+
+        self.preview_tree.expandAll()
 
     def complete_merge_ui(self, stats: dict):
         self.progress_bar.setValue(100)
-        self.progress_lbl.setText("Operation completed successfully!")
-        self.btn_start.setEnabled(True)
         self.btn_cancel.setEnabled(False)
         self.tabs.setEnabled(True)
-
-        copied_mb = round(stats["data_copied"] / (1024 * 1024), 2)
+        
+        # Test Run vs Actual Run complete flow logic
+        if self.is_currently_test_run:
+            self.test_run_done = True
+            self.progress_lbl.setText("Test Run Completed!")
+            self.btn_start.setEnabled(True)
+        else:
+            self.test_run_done = False
+            self.progress_lbl.setText("Operation completed successfully!")
+            self.btn_start.setEnabled(False) # A new test run is required if settings are touched
+            
+        self.lbl_merge_kpi_skipped.setText(str(stats["skipped"]))
+        copied_size_str = format_size(stats["data_copied"])
         
         msg = (
             f"Merge completed in {stats['elapsed_time']} seconds!\n\n"
@@ -1340,7 +1497,7 @@ class MainWindow(QMainWindow):
             f"Conflicts Encountered: {stats['conflicts']}\n"
             f"Duplicates Skipped: {stats['skipped']}\n"
             f"Errors Logged: {stats['errors']}\n"
-            f"Data Transferred: {copied_mb} MB"
+            f"Data Transferred: {copied_size_str}"
         )
         QMessageBox.information(self, "Process Log Output", msg)
 
@@ -1377,10 +1534,9 @@ class MainWindow(QMainWindow):
         
         for hash_val, paths in groups.items():
             group_idx += 1
-            # Retrieve size from first path safely
             try:
                 sz = Path(paths[0]).stat().st_size
-                sz_str = f"{round(sz / 1024, 1)} KB" if sz < 1048576 else f"{round(sz / 1048576, 1)} MB"
+                sz_str = format_size(sz)
                 reclaimable_bytes += sz * (len(paths) - 1)
             except Exception:
                 sz_str = "Unknown"
@@ -1397,7 +1553,7 @@ class MainWindow(QMainWindow):
             for p in paths:
                 p_item = QStandardItem(p)
                 p_item.setCheckable(True)
-                p_item.setData(p, Qt.UserRole) # Keep file path in custom data
+                p_item.setData(p, Qt.UserRole)
                 
                 size_item = QStandardItem(sz_str)
                 hash_item = QStandardItem(hash_val)
@@ -1405,11 +1561,7 @@ class MainWindow(QMainWindow):
 
         self.dup_tree.expandAll()
         
-        # Format reclaimable size elegantly
-        if reclaimable_bytes < 1048576:
-            reclaim_str = f"{round(reclaimable_bytes / 1024, 1)} KB"
-        else:
-            reclaim_str = f"{round(reclaimable_bytes / 1048576, 1)} MB"
+        reclaim_str = format_size(reclaimable_bytes)
             
         self.lbl_dup_kpi_groups.setText(str(total_groups))
         self.lbl_dup_kpi_space.setText(reclaim_str)
