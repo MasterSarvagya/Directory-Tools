@@ -1157,7 +1157,7 @@ class MainWindow(QMainWindow):
         self.preview_tree = QTreeView()
         self.preview_tree.setHeaderHidden(False)
         self.tree_model = QStandardItemModel()
-        self.tree_model.setHorizontalHeaderLabels(["Relative Path", "Overlay State", "Action Decision"])
+        self.tree_model.setHorizontalHeaderLabels(["Merged Directory Structure"])
         self.preview_tree.setModel(self.tree_model)
         self.preview_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
         right_layout.addWidget(self.preview_tree)
@@ -1422,7 +1422,7 @@ class MainWindow(QMainWindow):
         self.merge_worker.start()
 
     def populate_merge_tree(self, tree_data: dict):
-        """Build a collapsible hierarchical tree-view matching states."""
+        """Build a collapsible hierarchical tree-view matching states with sizes and colors."""
         root_item = self.tree_model.invisibleRootItem()
         
         total_files = len(tree_data)
@@ -1451,6 +1451,27 @@ class MainWindow(QMainWindow):
         self.lbl_merge_kpi_conflicts.setText(str(conflicts))
         self.lbl_merge_kpi_size.setText(size_str)
         
+        # Calculate recursive folder sizes for Left (A) and Right (B) folders
+        folder_sizes = {}  # tuple of parent paths -> {"sz_a": 0, "sz_b": 0}
+        for rel_path_str, info in tree_data.items():
+            state = info["state"]
+            sz_a = info.get("sz_a", info["size"]) if info.get("in_a") else 0
+            sz_b = info.get("sz_b", 0) if info.get("in_b") else 0
+            
+            parts = [p for p in rel_path_str.replace('\\', '/').split('/') if p]
+            if not parts:
+                continue
+            parent_dirs = parts[:-1]
+            
+            # Accumulate sizes for all parent paths
+            current_path_tuple = ()
+            for folder_name in parent_dirs:
+                current_path_tuple += (folder_name,)
+                if current_path_tuple not in folder_sizes:
+                    folder_sizes[current_path_tuple] = {"sz_a": 0, "sz_b": 0}
+                folder_sizes[current_path_tuple]["sz_a"] += sz_a
+                folder_sizes[current_path_tuple]["sz_b"] += sz_b
+
         folder_cache = {}
 
         for rel_path_str, info in sorted(tree_data.items()):
@@ -1474,40 +1495,51 @@ class MainWindow(QMainWindow):
                 if current_path_tuple in folder_cache:
                     current_parent = folder_cache[current_path_tuple]
                 else:
-                    folder_item = QStandardItem(folder_name)
+                    # Get accumulated sizes for this folder path
+                    f_sz = folder_sizes.get(current_path_tuple, {"sz_a": 0, "sz_b": 0})
+                    f_sz_a_str = format_size(f_sz["sz_a"])
+                    f_sz_b_str = format_size(f_sz["sz_b"])
+                    
+                    folder_display_name = f"{folder_name} (Left: {f_sz_a_str}, Right: {f_sz_b_str})"
+                    
+                    folder_item = QStandardItem(folder_display_name)
                     font = folder_item.font()
                     font.setBold(True)
                     folder_item.setFont(font)
-                    folder_item.setForeground(QBrush(QColor("#3b82f6")))
                     
-                    folder_state = QStandardItem("FOLDER")
-                    folder_state.setForeground(QBrush(QColor("#64748b")))
-                    folder_decision = QStandardItem("")
-                    
-                    current_parent.appendRow([folder_item, folder_state, folder_decision])
+                    # Color coding folder based on contents origin
+                    if f_sz["sz_a"] > 0 and f_sz["sz_b"] == 0:
+                        folder_item.setForeground(QBrush(QColor("#10b981"))) # Green = A Only
+                    elif f_sz["sz_b"] > 0 and f_sz["sz_a"] == 0:
+                        folder_item.setForeground(QBrush(QColor("#3b82f6"))) # Blue = B Only
+                    else:
+                        folder_item.setForeground(QBrush(QColor("#38bdf8"))) # Sky blue = Combined A and B
+                        
+                    current_parent.appendRow(folder_item)
                     folder_cache[current_path_tuple] = folder_item
                     current_parent = folder_item
             
-            # Add file level items with appropriate styling and state descriptors
-            item_path = QStandardItem(filename)
-            item_state = QStandardItem(state.upper())
-            item_decision = QStandardItem()
+            # Add file level item with appropriate styling and state descriptors
+            if state == "conflict":
+                sz_a_str = format_size(info.get("sz_a", info["size"]))
+                sz_b_str = format_size(info.get("sz_b", 0))
+                file_display_name = f"{filename} (Conflict: Left: {sz_a_str}, Right: {sz_b_str})"
+            else:
+                file_display_name = f"{filename} ({file_size_str})"
+                
+            item_path = QStandardItem(file_display_name)
             
-            # Apply colored indicators
+            # Apply colored indicators directly to the path/file name item
             if state == "identical":
-                item_state.setForeground(QBrush(QColor("#64748b")))
-                item_decision.setText(f"Keep unique copy ({file_size_str})")
+                item_path.setForeground(QBrush(QColor("#64748b"))) # Gray
             elif state == "conflict":
-                item_state.setForeground(QBrush(QColor("#f59e0b")))
-                item_decision.setText("Duplicated renaming requested")
+                item_path.setForeground(QBrush(QColor("#f59e0b"))) # Orange
             elif state == "folderA_only":
-                item_state.setForeground(QBrush(QColor("#10b981")))
-                item_decision.setText(f"Incorporate from A ({file_size_str})")
+                item_path.setForeground(QBrush(QColor("#10b981"))) # Green
             elif state == "folderB_only":
-                item_state.setForeground(QBrush(QColor("#3b82f6")))
-                item_decision.setText(f"Incorporate from B ({file_size_str})")
+                item_path.setForeground(QBrush(QColor("#3b82f6"))) # Blue
 
-            current_parent.appendRow([item_path, item_state, item_decision])
+            current_parent.appendRow(item_path)
 
         self.preview_tree.expandAll()
 

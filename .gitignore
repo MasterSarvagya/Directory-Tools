@@ -5,7 +5,4 @@ coverage/
 .DS_Store
 *.log
 .env*
-package.json
-settings.json
-tsconfig.json
-vite.*
+!.env.example

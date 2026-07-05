@@ -31,10 +31,33 @@ To run the desktop utility on a computer locally:
 
 ## 🔍 Core Algorithms & Safety Protocols
 
-### 1. Dry Run Mode
-When enabled via `chk_dry_run` or simulated in the web workspace, the `MergeWorker` thread calculates all matching logic (hashes, folder overlays, conflict resolution) but skips the actual read-write file streams, printing all operations with a custom `[DRY RUN]` marker.
+### 1. Dry Run / Test Run Workflow
+To prevent accidental data loss, the application employs a mandatory **Test Run (Dry Run)** workflow for directory merging:
+- Users must click **Test Run (Dry Run)** first.
+- The `MergeWorker` thread calculates all matching logic (hashes, folder overlays, conflict resolution) but skips actual write streams.
+- A fully collapsible directory preview tree is populated showing the exact merge outline.
+- If any input or configuration parameter is edited, the actual execution is disabled, and the user must run another Test Run to review the outline.
+- **Safety Dialogs**: Users are explicitly prompted with a confirmation dialog box (`QMessageBox.question`) when initiating either a final folder merge execution or a duplicate file scan.
 
-### 2. Progressive 4-Stage Scanning (Duplicates)
+### 2. Collapsible Hierarchical Tree Preview & Color Coding
+The folder merge preview is presented in a highly organized, single-column collapsible tree view (`QTreeView`). This provides clear visual grouping of files into directories:
+- **Left/Right Folder Size Aggregations**:
+  - Every parent directory node dynamically displays the exact aggregate size of all files contained within it from both folders: e.g., `folder_name (Left: 1.2 MB, Right: 340.0 KB)`.
+  - Sizes are formatted elegantly (`Bytes`, `KB`, `MB`, `GB`, `TB`) based on actual file size.
+- **Visual Origin Indicators & Theme Colors**:
+  - The traditional "Overlay State" and "Action Decision" columns have been replaced with direct visual styling.
+  - **Identical Files**: Styled in muted Gray (`#64748b`) indicating clean consolidation.
+  - **A-Only Files**: Styled in vibrant Green (`#10b981`) indicating incorporation from Folder A.
+  - **B-Only Files**: Styled in deep Blue (`#3b82f6`) indicating incorporation from Folder B.
+  - **Conflict Files**: Styled in striking Orange (`#f59e0b`), listing separate Left and Right sizes: e.g., `file.txt (Conflict: Left: 5.0 KB, Right: 6.2 KB)`.
+  - **Folders**: Directories are colored automatically according to their contents' origins: Green if only containing Left items, Blue if only containing Right items, and Sky Blue (`#38bdf8`) if containing a hybrid blend of both.
+
+### 3. Smart Merge Size Estimations
+The calculated total size of the final merged folder dynamically reflects the chosen **Conflict Resolution Policy**:
+- **Keep Both**: Adds up both Left and Right candidate sizes for conflicting files.
+- **Overwrite / Left Dominates**: Resolves conflict sizes by counting only the Left (Folder A) variant of conflicting files.
+
+### 4. Progressive 4-Stage Scanning (Duplicates)
 Scanning up to 500,000+ folders efficiently without memory overflow:
 - **Stage 1 (Size Clustering)**: Scans directories recursively and groups items by exact file size. Non-matching sizes are immediately pruned.
 - **Stage 2 (Header Hash Check)**: Reads only the first 8 KB block of candidate duplicate files, computing standard MD5 hashes of these chunks to filter mismatches quickly.
