@@ -474,11 +474,21 @@ class MergeWorker(QThread):
             total_items = len(all_rel_paths)
             processed_items = 0
 
-            # Preview calculations
+            # Preview calculations with optimized size check and real-time logging
+            self.status_updated.emit("Calculating merge overlay & conflicts...")
+            self.log_emitted.emit("[INFO] Commencing file comparison & conflict determination...")
+            
             for i, rel_path in enumerate(all_rel_paths):
                 if self._is_cancelled:
                     self.log_emitted.emit("[WARN] Merge operation cancelled by user.")
                     return
+
+                # Real-time feedback for large directories to prevent perceived hanging
+                if (i + 1) % 500 == 0 or i == total_items - 1:
+                    percent = int(((i + 1) / total_items) * 100)
+                    self.progress_updated.emit(percent)
+                    self.status_updated.emit(f"Analyzing conflicts: {i+1}/{total_items} files...")
+                    self.log_emitted.emit(f"[INFO] Analyzed {i+1}/{total_items} files for overlay map...")
 
                 in_a = rel_path in files_a
                 in_b = rel_path in files_b
@@ -487,15 +497,23 @@ class MergeWorker(QThread):
                 size = 0
                 
                 if in_a and in_b:
-                    # Compare content hashes
-                    hash_a = self.calculate_file_hash(files_a[rel_path])
-                    hash_b = self.calculate_file_hash(files_b[rel_path])
-                    if hash_a == hash_b:
+                    # Metadata-only comparison for ultra-fast merge overlay creation
+                    try:
+                        sz_a = files_a[rel_path].stat().st_size
+                        sz_b = files_b[rel_path].stat().st_size
+                    except Exception:
+                        sz_a = -1
+                        sz_b = -2
+                        
+                    if sz_a == sz_b:
+                        # Same relative path (name/path) and same size -> assume identical for merging
                         state = "identical"
-                        size = files_a[rel_path].stat().st_size
+                        size = sz_a
                     else:
+                        # Different sizes -> conflict
                         state = "conflict"
                         stats["conflicts"] += 1
+                        size = max(sz_a, 0)
                 elif in_a:
                     state = "folderA_only"
                     size = files_a[rel_path].stat().st_size
@@ -514,6 +532,8 @@ class MergeWorker(QThread):
 
             # Execution (If not dry run)
             self.status_updated.emit("Merging files...")
+            self.log_emitted.emit(f"[INFO] Initializing folder merging workflow (Dry Run: {self.dry_run})...")
+            
             for rel_path, info in preview_tree.items():
                 if self._is_cancelled:
                     return
@@ -526,13 +546,13 @@ class MergeWorker(QThread):
                 
                 if state == "identical":
                     # Just copy A to dest
-                    self._copy_file_safe(files_a[p], self.dest_folder / p, stats)
+                    self._copy_file_safe(files_a[p], self.dest_folder / p, stats, processed_items, total_items)
                     stats["skipped"] += 1 # We kept only one copy, skipped B
                 elif state == "folderA_only":
-                    self._copy_file_safe(files_a[p], self.dest_folder / p, stats)
+                    self._copy_file_safe(files_a[p], self.dest_folder / p, stats, processed_items, total_items)
                     stats["copied"] += 1
                 elif state == "folderB_only":
-                    self._copy_file_safe(files_b[p], self.dest_folder / p, stats)
+                    self._copy_file_safe(files_b[p], self.dest_folder / p, stats, processed_items, total_items)
                     stats["copied"] += 1
                 elif state == "conflict":
                     if self.policy == "rename_both":
@@ -541,13 +561,13 @@ class MergeWorker(QThread):
                         name_a = f"{stem} (Folder A){suffix}"
                         name_b = f"{stem} (Folder B){suffix}"
                         
-                        self._copy_file_safe(files_a[p], self.dest_folder / p.parent / name_a, stats)
-                        self._copy_file_safe(files_b[p], self.dest_folder / p.parent / name_b, stats)
+                        self._copy_file_safe(files_a[p], self.dest_folder / p.parent / name_a, stats, processed_items, total_items)
+                        self._copy_file_safe(files_b[p], self.dest_folder / p.parent / name_b, stats, processed_items, total_items)
                         stats["copied"] += 2
                         self.log_emitted.emit(f"[CONFLICT] Renamed both candidates for {rel_path}")
                     else:
                         # Overwrite with Folder A
-                        self._copy_file_safe(files_a[p], self.dest_folder / p, stats)
+                        self._copy_file_safe(files_a[p], self.dest_folder / p, stats, processed_items, total_items)
                         stats["copied"] += 1
                         self.log_emitted.emit(f"[CONFLICT] Overwrote conflict with Folder A version: {rel_path}")
 
@@ -558,7 +578,7 @@ class MergeWorker(QThread):
             logger.exception("Merge worker runtime exception")
             self.error_raised.emit(str(e))
 
-    def _copy_file_safe(self, src: Path, dest: Path, stats: dict):
+    def _copy_file_safe(self, src: Path, dest: Path, stats: dict, idx: int, total_items: int):
         """Copies file safely, tracking total copied size. Respects DRY RUN flag."""
         try:
             if not self.dry_run:
@@ -571,7 +591,11 @@ class MergeWorker(QThread):
                         fd.write(chunk)
             
             stats["data_copied"] += src.stat().st_size
-            self.log_emitted.emit(f"[COPY] {src.name} -> {dest.name}")
+            
+            # Log individual copies only if total_items is small, otherwise log in batches to prevent UI lockup
+            if total_items < 100 or idx % 100 == 0 or idx == total_items:
+                prefix = "[SIMULATE]" if self.dry_run else "[COPY]"
+                self.log_emitted.emit(f"{prefix} ({idx}/{total_items}) {src.name} -> {dest.name}")
         except Exception as e:
             stats["errors"] += 1
             self.log_emitted.emit(f"[ERROR] Copy failed for {src.name}: {e}")
@@ -818,6 +842,9 @@ class MainWindow(QMainWindow):
 
         # Apply current theme
         self.apply_theme(self.settings.get("theme", "Dark"))
+        
+        # Manually invoke tab_changed to set initial button states
+        self.tab_changed(self.tabs.currentIndex())
 
     # ---------------------------------------------------------
     # TAB 1: DIRECTORY MERGE SETUP
@@ -999,11 +1026,12 @@ class MainWindow(QMainWindow):
 
     def tab_changed(self, index: int):
         self.active_tab_index = index
-        # Update Start Button text
-        if index == 0:
-            self.btn_start.setText("Run Folder Merge")
-        else:
-            self.btn_start.setText("Run Duplicate Scan")
+        # Update Start Button text safely if it has been initialized
+        if hasattr(self, 'btn_start'):
+            if index == 0:
+                self.btn_start.setText("Run Folder Merge")
+            else:
+                self.btn_start.setText("Run Duplicate Scan")
 
     @Slot(str)
     def append_log(self, text: str):
