@@ -112,6 +112,26 @@ QWidget {
 QFrame {
     border: none;
 }
+QFrame#kpi_card {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+}
+QLabel#kpi_title {
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: bold;
+}
+QLabel#kpi_value {
+    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 800;
+}
+QLabel#section_header {
+    font-weight: bold;
+    font-size: 10px;
+    color: #38bdf8;
+}
 QTabWidget::pane {
     border: 1px solid #1e293b;
     background-color: #0f172a;
@@ -177,6 +197,13 @@ QTreeView {
     gridline-color: #1e293b;
     color: #e2e8f0;
 }
+QHeaderView::section {
+    background-color: #1e293b;
+    color: #cbd5e1;
+    padding: 6px;
+    border: 1px solid #111827;
+    font-weight: bold;
+}
 QTreeView::item {
     padding: 4px;
 }
@@ -234,6 +261,26 @@ QWidget {
 }
 QFrame {
     border: none;
+}
+QFrame#kpi_card {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+}
+QLabel#kpi_title {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: bold;
+}
+QLabel#kpi_value {
+    color: #2563eb;
+    font-size: 18px;
+    font-weight: 800;
+}
+QLabel#section_header {
+    font-weight: bold;
+    font-size: 10px;
+    color: #0284c7;
 }
 QTabWidget::pane {
     border: 1px solid #cbd5e1;
@@ -299,6 +346,13 @@ QTreeView {
     border-radius: 8px;
     gridline-color: #e2e8f0;
     color: #0f172a;
+}
+QHeaderView::section {
+    background-color: #f1f5f9;
+    color: #334155;
+    padding: 6px;
+    border: 1px solid #e2e8f0;
+    font-weight: bold;
 }
 QTreeView::item {
     padding: 4px;
@@ -746,6 +800,27 @@ class MainWindow(QMainWindow):
         
         self.init_ui()
 
+    def create_kpi_card(self, title: str, initial_value: str) -> Tuple[QFrame, QLabel]:
+        card = QFrame()
+        card.setObjectName("kpi_card")
+        
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(4)
+        
+        title_lbl = QLabel(title.upper())
+        title_lbl.setObjectName("kpi_title")
+        title_lbl.setAlignment(Qt.AlignCenter)
+        
+        value_lbl = QLabel(initial_value)
+        value_lbl.setObjectName("kpi_value")
+        value_lbl.setAlignment(Qt.AlignCenter)
+        
+        layout.addWidget(title_lbl)
+        layout.addWidget(value_lbl)
+        
+        return card, value_lbl
+
     def init_ui(self):
         self.setWindowTitle("FileMorph Architect - Python Desktop Utility")
         self.resize(self.settings["window_width"], self.settings["window_height"])
@@ -801,16 +876,6 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.tab_dup, "Duplicate File Finder")
         main_layout.addWidget(self.tabs)
 
-        # Logging / Console Area
-        console_lbl = QLabel("SYSTEM CONSOLE OUT (application.log)")
-        console_lbl.setStyleSheet("font-weight: bold; font-size: 11px; color: #64748b; margin-top: 8px;")
-        main_layout.addWidget(console_lbl)
-        
-        self.console_out = QTextEdit()
-        self.console_out.setReadOnly(True)
-        self.console_out.append("[SYSTEM] Application ready. Modern PySide6 style loaded.")
-        main_layout.addWidget(self.console_out)
-
         # Footer Actions Panel
         footer_frame = QFrame()
         footer_layout = QHBoxLayout(footer_frame)
@@ -850,17 +915,38 @@ class MainWindow(QMainWindow):
     # TAB 1: DIRECTORY MERGE SETUP
     # ---------------------------------------------------------
     def setup_merge_tab(self):
-        layout = QVBoxLayout(self.tab_merge)
+        layout = QHBoxLayout(self.tab_merge)
         layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
 
-        # Browse Fields Config Grid
+        # Left Widget / Layout
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(12)
+
+        # 1. KPI Row Widget
+        kpi_layout = QHBoxLayout()
+        kpi_layout.setSpacing(10)
+        
+        card_total, self.lbl_merge_kpi_total = self.create_kpi_card("TOTAL FILES", "0")
+        card_conflicts, self.lbl_merge_kpi_conflicts = self.create_kpi_card("CONFLICTS", "0")
+        card_size, self.lbl_merge_kpi_size = self.create_kpi_card("DATA SIZE", "0 MB")
+        
+        kpi_layout.addWidget(card_total)
+        kpi_layout.addWidget(card_conflicts)
+        kpi_layout.addWidget(card_size)
+        left_layout.addLayout(kpi_layout)
+
+        # 2. Browse Fields Frame
         browse_frame = QFrame()
         browse_grid = QVBoxLayout(browse_frame)
         browse_grid.setContentsMargins(0, 0, 0, 0)
+        browse_grid.setSpacing(6)
 
         # Folder A Input
         lbl_a = QLabel("SOURCE FOLDER A")
-        lbl_a.setStyleSheet("font-weight: bold; font-size: 10px; color: #64748b;")
+        lbl_a.setObjectName("section_header")
         row_a = QHBoxLayout()
         self.edit_folder_a = QLineEdit(self.settings["last_folder_a"])
         btn_browse_a = QPushButton("Browse")
@@ -873,7 +959,7 @@ class MainWindow(QMainWindow):
 
         # Folder B Input
         lbl_b = QLabel("SOURCE FOLDER B")
-        lbl_b.setStyleSheet("font-weight: bold; font-size: 10px; color: #64748b;")
+        lbl_b.setObjectName("section_header")
         row_b = QHBoxLayout()
         self.edit_folder_b = QLineEdit(self.settings["last_folder_b"])
         btn_browse_b = QPushButton("Browse")
@@ -886,7 +972,7 @@ class MainWindow(QMainWindow):
 
         # Destination Folder Input
         lbl_dest = QLabel("DESTINATION FOLDER")
-        lbl_dest.setStyleSheet("font-weight: bold; font-size: 10px; color: #64748b;")
+        lbl_dest.setObjectName("section_header")
         row_dest = QHBoxLayout()
         self.edit_dest = QLineEdit(self.settings["last_destination"])
         btn_browse_dest = QPushButton("Browse")
@@ -897,18 +983,18 @@ class MainWindow(QMainWindow):
         browse_grid.addWidget(lbl_dest)
         browse_grid.addLayout(row_dest)
 
-        layout.addWidget(browse_frame)
+        left_layout.addWidget(browse_frame)
 
-        # Ignore Patterns Field
+        # 3. Ignore Patterns Field
         ignore_lbl = QLabel("IGNORE PATTERNS (comma-separated globs, e.g. *.tmp, *.log, temp_dir/)")
-        ignore_lbl.setStyleSheet("font-weight: bold; font-size: 10px; color: #64748b;")
+        ignore_lbl.setObjectName("section_header")
         self.edit_ignore = QLineEdit(self.settings.get("ignore_patterns", "*.tmp, *.log, temp_dir/"))
         self.edit_ignore.setPlaceholderText("e.g. *.tmp, *.log, temp_dir/")
         self.edit_ignore.textChanged.connect(self.save_ignore_patterns)
-        layout.addWidget(ignore_lbl)
-        layout.addWidget(self.edit_ignore)
+        left_layout.addWidget(ignore_lbl)
+        left_layout.addWidget(self.edit_ignore)
 
-        # Conflict Policy & DRY RUN control bar
+        # 4. Conflict Policy & DRY RUN control bar
         controls_bar = QHBoxLayout()
         
         policy_lbl = QLabel("Conflict Policy:")
@@ -922,13 +1008,28 @@ class MainWindow(QMainWindow):
         
         controls_bar.addWidget(policy_lbl)
         controls_bar.addWidget(self.policy_box)
-        controls_bar.addSpacing(20)
+        controls_bar.addSpacing(10)
         controls_bar.addWidget(self.chk_dry_run)
-        controls_bar.addStretch()
         
-        layout.addLayout(controls_bar)
+        left_layout.addLayout(controls_bar)
 
-        # Tree View for preview
+        # 5. Local Tab Logs below inputs
+        console_lbl = QLabel("DIRECTORY MERGE CONSOLE LOGS")
+        console_lbl.setObjectName("section_header")
+        left_layout.addWidget(console_lbl)
+        
+        self.merge_console_out = QTextEdit()
+        self.merge_console_out.setReadOnly(True)
+        self.merge_console_out.append("[SYSTEM] Directory Merge workspace active.")
+        left_layout.addWidget(self.merge_console_out)
+
+        # Right Widget / Layout
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(12)
+
+        # Tree View Header
         tree_header = QHBoxLayout()
         preview_title = QLabel("Pre-Merge Decision Tree Preview")
         preview_title.setStyleSheet("font-weight: bold; font-size: 12px; color: #3b82f6;")
@@ -939,26 +1040,51 @@ class MainWindow(QMainWindow):
         tree_header.addWidget(preview_title)
         tree_header.addStretch()
         tree_header.addWidget(legend_lbl)
-        layout.addLayout(tree_header)
+        right_layout.addLayout(tree_header)
 
+        # Preview Tree
         self.preview_tree = QTreeView()
         self.preview_tree.setHeaderHidden(False)
         self.tree_model = QStandardItemModel()
         self.tree_model.setHorizontalHeaderLabels(["Relative Path", "Overlay State", "Action Decision"])
         self.preview_tree.setModel(self.tree_model)
         self.preview_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
-        layout.addWidget(self.preview_tree)
+        right_layout.addWidget(self.preview_tree)
+
+        # Add left and right widgets with layout stretch factors
+        layout.addWidget(left_widget, 45)
+        layout.addWidget(right_widget, 55)
 
     # ---------------------------------------------------------
     # TAB 2: DUPLICATE FINDER SETUP
     # ---------------------------------------------------------
     def setup_duplicates_tab(self):
-        layout = QVBoxLayout(self.tab_dup)
+        layout = QHBoxLayout(self.tab_dup)
         layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
 
-        # Search Target selector
+        # Left Widget / Layout
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(12)
+
+        # 1. KPI Row Widget
+        kpi_layout = QHBoxLayout()
+        kpi_layout.setSpacing(10)
+        
+        card_scanned, self.lbl_dup_kpi_scanned = self.create_kpi_card("SCANNED FILES", "0")
+        card_groups, self.lbl_dup_kpi_groups = self.create_kpi_card("DUPLICATE GROUPS", "0")
+        card_space, self.lbl_dup_kpi_space = self.create_kpi_card("RECLAIMABLE SPACE", "0 MB")
+        
+        kpi_layout.addWidget(card_scanned)
+        kpi_layout.addWidget(card_groups)
+        kpi_layout.addWidget(card_space)
+        left_layout.addLayout(kpi_layout)
+
+        # 2. Search Target selector
         lbl_target = QLabel("TARGET DIRECTORY TO SCAN")
-        lbl_target.setStyleSheet("font-weight: bold; font-size: 10px; color: #64748b;")
+        lbl_target.setObjectName("section_header")
         row_target = QHBoxLayout()
         self.edit_target = QLineEdit(self.settings["last_duplicate_target"])
         btn_browse_target = QPushButton("Browse")
@@ -967,34 +1093,19 @@ class MainWindow(QMainWindow):
         row_target.addWidget(self.edit_target)
         row_target.addWidget(btn_browse_target)
         
-        layout.addWidget(lbl_target)
-        layout.addLayout(row_target)
+        left_layout.addWidget(lbl_target)
+        left_layout.addLayout(row_target)
 
-        # Ignore Patterns Field for Duplicates
+        # 3. Ignore Patterns Field for Duplicates
         ignore_lbl_dup = QLabel("IGNORE PATTERNS (comma-separated globs, e.g. *.tmp, *.log, temp_dir/)")
-        ignore_lbl_dup.setStyleSheet("font-weight: bold; font-size: 10px; color: #64748b;")
+        ignore_lbl_dup.setObjectName("section_header")
         self.edit_ignore_dup = QLineEdit(self.settings.get("ignore_patterns", "*.tmp, *.log, temp_dir/"))
         self.edit_ignore_dup.setPlaceholderText("e.g. *.tmp, *.log, temp_dir/")
         self.edit_ignore_dup.textChanged.connect(self.save_ignore_patterns)
-        layout.addWidget(ignore_lbl_dup)
-        layout.addWidget(self.edit_ignore_dup)
+        left_layout.addWidget(ignore_lbl_dup)
+        left_layout.addWidget(self.edit_ignore_dup)
 
-        # Duplicate results display tree
-        results_header = QHBoxLayout()
-        res_title = QLabel("Duplicate Group Registry")
-        res_title.setStyleSheet("font-weight: bold; font-size: 12px; color: #3b82f6;")
-        results_header.addWidget(res_title)
-        results_header.addStretch()
-        layout.addLayout(results_header)
-
-        self.dup_tree = QTreeView()
-        self.dup_model = QStandardItemModel()
-        self.dup_model.setHorizontalHeaderLabels(["Target Path", "Size", "SHA-256 Content Hash"])
-        self.dup_tree.setModel(self.dup_model)
-        self.dup_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
-        layout.addWidget(self.dup_tree)
-
-        # Selection controls & Action Buttons
+        # 4. Actions bar
         actions_bar = QHBoxLayout()
         
         self.btn_select_all_dups = QPushButton("Select Duplicates")
@@ -1010,9 +1121,44 @@ class MainWindow(QMainWindow):
 
         actions_bar.addWidget(self.btn_select_all_dups)
         actions_bar.addWidget(self.btn_trash_selected)
-        actions_bar.addStretch()
         actions_bar.addWidget(self.btn_export_csv)
-        layout.addLayout(actions_bar)
+        
+        left_layout.addLayout(actions_bar)
+
+        # 5. Local Tab Logs below inputs
+        console_lbl = QLabel("DUPLICATE SCANNER CONSOLE LOGS")
+        console_lbl.setObjectName("section_header")
+        left_layout.addWidget(console_lbl)
+        
+        self.dup_console_out = QTextEdit()
+        self.dup_console_out.setReadOnly(True)
+        self.dup_console_out.append("[SYSTEM] Duplicate Scan workspace active.")
+        left_layout.addWidget(self.dup_console_out)
+
+        # Right Widget / Layout
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(12)
+
+        # Registry Header
+        results_header = QHBoxLayout()
+        res_title = QLabel("Duplicate Group Registry")
+        res_title.setStyleSheet("font-weight: bold; font-size: 12px; color: #3b82f6;")
+        results_header.addWidget(res_title)
+        right_layout.addLayout(results_header)
+
+        # Duplicate results tree
+        self.dup_tree = QTreeView()
+        self.dup_model = QStandardItemModel()
+        self.dup_model.setHorizontalHeaderLabels(["Target Path", "Size", "SHA-256 Content Hash"])
+        self.dup_tree.setModel(self.dup_model)
+        self.dup_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        right_layout.addWidget(self.dup_tree)
+
+        # Add left and right widgets with stretch factors
+        layout.addWidget(left_widget, 45)
+        layout.addWidget(right_widget, 55)
 
     # ---------------------------------------------------------
     # SHARED HELPERS & ROUTINES
@@ -1035,12 +1181,18 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def append_log(self, text: str):
-        self.console_out.append(text)
+        if hasattr(self, 'merge_console_out'):
+            self.merge_console_out.append(text)
+        if hasattr(self, 'dup_console_out'):
+            self.dup_console_out.append(text)
         logger.info(text)
 
     def clear_logs(self):
-        self.console_out.clear()
-        self.append_log("[SYSTEM] Console log reset.")
+        if hasattr(self, 'merge_console_out'):
+            self.merge_console_out.clear()
+        if hasattr(self, 'dup_console_out'):
+            self.dup_console_out.clear()
+        self.append_log("[SYSTEM] Console logs reset.")
 
     def save_ignore_patterns(self, text: str):
         self.settings["ignore_patterns"] = text
@@ -1078,22 +1230,12 @@ class MainWindow(QMainWindow):
             self.desc_lbl.setStyleSheet("font-size: 11px; color: #475569; font-weight: normal;")
             self.progress_lbl.setStyleSheet("color: #475569;")
             self.chk_dry_run.setStyleSheet("font-weight: bold; color: #0f172a;")
-            self.btn_theme.setStyleSheet("color: #0f172a;")
-            self.btn_logs.setStyleSheet("color: #0f172a;")
-            self.btn_select_all_dups.setStyleSheet("color: #0f172a;")
-            self.btn_export_csv.setStyleSheet("color: #0f172a;")
-            self.btn_cancel.setStyleSheet("color: #0f172a;")
         else:
             self.setStyleSheet(SLEEK_DARK_STYLE)
             self.title_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
             self.desc_lbl.setStyleSheet("font-size: 11px; color: #94a3b8; font-weight: normal;")
             self.progress_lbl.setStyleSheet("color: #94a3b8;")
             self.chk_dry_run.setStyleSheet("font-weight: bold; color: #e2e8f0;")
-            self.btn_theme.setStyleSheet("color: #f8fafc;")
-            self.btn_logs.setStyleSheet("color: #f8fafc;")
-            self.btn_select_all_dups.setStyleSheet("color: #f8fafc;")
-            self.btn_export_csv.setStyleSheet("color: #f8fafc;")
-            self.btn_cancel.setStyleSheet("color: #f8fafc;")
 
     # ---------------------------------------------------------
     # OPERATIONAL PIPELINES
@@ -1144,6 +1286,20 @@ class MainWindow(QMainWindow):
     def populate_merge_tree(self, tree_data: dict):
         """Build a tree-view matching states."""
         root_item = self.tree_model.invisibleRootItem()
+        
+        total_files = len(tree_data)
+        conflicts = sum(1 for info in tree_data.values() if info["state"] == "conflict")
+        total_bytes = sum(info["size"] for info in tree_data.values())
+        
+        # Format size elegantly
+        if total_bytes < 1048576:
+            size_str = f"{round(total_bytes / 1024, 1)} KB"
+        else:
+            size_str = f"{round(total_bytes / 1048576, 1)} MB"
+            
+        self.lbl_merge_kpi_total.setText(str(total_files))
+        self.lbl_merge_kpi_conflicts.setText(str(conflicts))
+        self.lbl_merge_kpi_size.setText(size_str)
         
         for rel_path_str, info in sorted(tree_data.items()):
             state = info["state"]
@@ -1216,12 +1372,16 @@ class MainWindow(QMainWindow):
         root = self.dup_model.invisibleRootItem()
         group_idx = 0
         
+        total_groups = len(groups)
+        reclaimable_bytes = 0
+        
         for hash_val, paths in groups.items():
             group_idx += 1
             # Retrieve size from first path safely
             try:
                 sz = Path(paths[0]).stat().st_size
                 sz_str = f"{round(sz / 1024, 1)} KB" if sz < 1048576 else f"{round(sz / 1048576, 1)} MB"
+                reclaimable_bytes += sz * (len(paths) - 1)
             except Exception:
                 sz_str = "Unknown"
 
@@ -1244,6 +1404,15 @@ class MainWindow(QMainWindow):
                 hdr_path.appendRow([p_item, size_item, hash_item])
 
         self.dup_tree.expandAll()
+        
+        # Format reclaimable size elegantly
+        if reclaimable_bytes < 1048576:
+            reclaim_str = f"{round(reclaimable_bytes / 1024, 1)} KB"
+        else:
+            reclaim_str = f"{round(reclaimable_bytes / 1048576, 1)} MB"
+            
+        self.lbl_dup_kpi_groups.setText(str(total_groups))
+        self.lbl_dup_kpi_space.setText(reclaim_str)
 
     def complete_duplicate_ui(self, metrics: dict):
         self.progress_bar.setValue(100)
@@ -1251,6 +1420,8 @@ class MainWindow(QMainWindow):
         self.btn_start.setEnabled(True)
         self.btn_cancel.setEnabled(False)
         self.tabs.setEnabled(True)
+        
+        self.lbl_dup_kpi_scanned.setText(str(metrics["total_files"]))
 
     def handle_worker_error(self, err_msg: str):
         self.btn_start.setEnabled(True)
